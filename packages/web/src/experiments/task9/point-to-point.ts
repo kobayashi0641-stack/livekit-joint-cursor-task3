@@ -85,16 +85,39 @@ export function shouldShowTask9SharedFeedback(
   return selectedByAdmin && enabled && phase === 'shared';
 }
 
+export function getTask9SharedCursorFill(showIndividualFeedback: boolean): '#2563eb' | '#111827' {
+  return showIndividualFeedback ? '#111827' : '#2563eb';
+}
+
 export function isTask9CompletionMessage(text: string): boolean {
   return /^Trial \d+ of \d+ is complete\./.test(text.trim());
+}
+
+export function shouldShowTask9QuestionnaireScore(
+  phase: string | undefined,
+  scoreTrialNumber: number,
+  questionnaireTrialNumber: number,
+  questionnaireVisible: boolean,
+): boolean {
+  return phase === 'shared'
+    && questionnaireVisible
+    && scoreTrialNumber === questionnaireTrialNumber;
+}
+
+export function shouldShowTask9CompletionScore(
+  phase: string | undefined,
+  completionMessageVisible: boolean,
+): boolean {
+  return phase !== 'shared' && completionMessageVisible;
 }
 
 const INNER_RADIUS = 0.18;
 
 /**
- * Thirteen vertices from a triangular lattice: the origin, its six nearest
- * neighbours, and the six next-nearest neighbours. The latter are rotated
- * 30 degrees and sit at sqrt(3) times the nearest-neighbour distance.
+ * Nineteen vertices from a triangular lattice: the origin, its six nearest
+ * neighbours, and the twelve vertices in the second lattice ring. Six of the
+ * outer vertices are rotated 30 degrees at sqrt(3) spacings; the other six
+ * form a regular hexagon two target spacings from the center.
  */
 export function createTask9TargetGrid(): Task9Point[] {
   const center = { x: 0.5, y: 0.5 };
@@ -105,7 +128,12 @@ export function createTask9TargetGrid(): Task9Point[] {
       y: center.y + radius * Math.sin(angle),
     };
   });
-  return [center, ...ring(INNER_RADIUS, 0), ...ring(INNER_RADIUS * Math.sqrt(3), 30)];
+  return [
+    center,
+    ...ring(INNER_RADIUS, 0),
+    ...ring(INNER_RADIUS * Math.sqrt(3), 30),
+    ...ring(INNER_RADIUS * 2, 0),
+  ];
 }
 
 function mix32(value: number): number {
@@ -118,20 +146,52 @@ function mix32(value: number): number {
   return mixed >>> 0;
 }
 
-/** Select a repeatable target. Sequence zero excludes the center start point. */
+function shuffledTask9TargetSet(seed: number, setIndex: number): number[] {
+  const count = createTask9TargetGrid().length;
+  let previousSet: number[] | null = null;
+
+  for (let currentSetIndex = 0; currentSetIndex <= setIndex; currentSetIndex += 1) {
+    const currentSet = Array.from({ length: count }, (_, index) => index);
+    let randomState = mix32(
+      (Math.floor(seed) >>> 0) ^ Math.imul(currentSetIndex + 1, 0x9e3779b1),
+    );
+    for (let index = currentSet.length - 1; index > 0; index -= 1) {
+      randomState = mix32((randomState + 0x6d2b79f5) >>> 0);
+      const swapIndex = randomState % (index + 1);
+      [currentSet[index], currentSet[swapIndex]] = [currentSet[swapIndex], currentSet[index]];
+    }
+
+    if (previousSet) {
+      const previousLast = previousSet[previousSet.length - 1];
+      if (currentSet[0] === previousLast) {
+        [currentSet[0], currentSet[1]] = [currentSet[1], currentSet[0]];
+      }
+      if (currentSet.every((targetIndex, index) => targetIndex === previousSet![index])) {
+        [currentSet[1], currentSet[2]] = [currentSet[2], currentSet[1]];
+      }
+    }
+    previousSet = currentSet;
+  }
+
+  return previousSet ?? [];
+}
+
+/**
+ * Select a repeatable target from independently shuffled 19-target sets.
+ * Every target appears exactly once per set, and adjacent sets cannot share
+ * the same boundary target or repeat the exact same order.
+ */
 export function selectNextTargetIndex(
   seed: number,
   sequence: number,
-  previousIndex: number | null,
+  _previousIndex: number | null,
   _identity: string,
 ): number {
   const count = createTask9TargetGrid().length;
-  const mixed = mix32((Math.floor(seed) >>> 0) ^ Math.imul(sequence + 1, 0x9e3779b1));
-  if (previousIndex === null) {
-    return 1 + (mixed % (count - 1));
-  }
-  const offset = 1 + (mixed % (count - 1));
-  return (previousIndex + offset) % count;
+  const safeSequence = Math.max(0, Math.floor(sequence));
+  const setIndex = Math.floor(safeSequence / count);
+  const positionInSet = safeSequence % count;
+  return shuffledTask9TargetSet(seed, setIndex)[positionInSet];
 }
 
 export function getTask9RenderState(

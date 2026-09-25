@@ -32,7 +32,7 @@ export async function runTrialBody(ctx: TrialContext): Promise<void> {
     seed: (Math.floor(config.sharedPhaseSeed) ^ Math.imul(ctx.trialNumber, 0x9E3779B1)) >>> 0,
     countdownMs: COUNTDOWN_MS,
     dwellMs: DWELL_MS,
-    targetCount: 13,
+    targetCount: 19,
     shape: 'circle',
     durationMs,
   };
@@ -43,7 +43,7 @@ export async function runTrialBody(ctx: TrialContext): Promise<void> {
     countdownMs: COUNTDOWN_MS,
     dwellMs: DWELL_MS,
     durationMs,
-    targetCount: 13,
+    targetCount: 19,
     cursorControl: {
       phase,
       matrix: config.sharedMatrix,

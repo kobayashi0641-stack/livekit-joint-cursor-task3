@@ -19,10 +19,14 @@ import {
 } from './termination-copy.js';
 import {
   advanceTask9SharedTargetParams,
+  getTask9SharedCursorFill,
   isTask9CompletionMessage,
+  shouldShowTask9CompletionScore,
+  shouldShowTask9QuestionnaireScore,
   shouldShowTask9SharedFeedback,
   type Task9Acquisition,
 } from './experiments/task9/point-to-point.js';
+import { getInitialExperimentTaskType } from './admin-agent-controls-config-sync.js';
 import { TaskStage, type P5Dot, type P5Line, type P5Target, type P5Guide, type P5YesNo, type ExperimentTaskType } from './experiments/TaskStage';
 import {
   getSketchByExperimentTask,
@@ -31,9 +35,13 @@ import {
 import {
   CONSENT_DATA_COLLECTION_ITEMS,
   SHARED_CONTRIBUTION_OPTIONS,
+  SHARED_CONTRIBUTION_OPTION_GAP_PX,
+  SHARED_CONTRIBUTION_OPTION_MIN_HEIGHT_PX,
+  SHARED_CONTRIBUTION_PANEL_MAX_WIDTH_PX,
   SHARED_CONTRIBUTION_CONSENT_COPY,
   SHARED_CONTRIBUTION_SUBMIT_LABEL,
   deliverSharedContributionResponse,
+  getSharedContributionInputId,
   getSharedContributionQuestion,
   isSharedContributionSelected,
 } from './shared-contribution';
@@ -42,9 +50,11 @@ import { describeRecordingStorage } from './recording-storage';
 import { getInstructionImageAlt, getInstructionImageSrc } from './instruction-images';
 import { formatTimestampForFilename } from './filename-time';
 import { shouldRequireImmediatePointerLockRecovery } from './pointer-lock-recovery';
+import { waitForPointerLockRelease } from './pointer-lock-release';
 import {
   getWaitingTargetFill,
   getWaitingTargetPosition,
+  shouldResetParticipantStartConfirmation,
   shouldShowCursorControlWaitingPreview,
 } from './waiting-target';
 import { SequentialUploadQueue } from './recording-upload-queue';
@@ -450,18 +460,25 @@ function SharedContributionQuestion({
   return (
     <fieldset className="shared-questionnaire__question shared-questionnaire__contribution">
       <legend>{question}</legend>
-      <div className="shared-questionnaire__contribution-options">
+      <div
+        className="shared-questionnaire__contribution-options"
+        style={{ gap: `${SHARED_CONTRIBUTION_OPTION_GAP_PX}px` }}
+      >
         {SHARED_CONTRIBUTION_OPTIONS.map((option) => (
           <label
             key={option.value}
+            htmlFor={getSharedContributionInputId(option.value)}
             className={`shared-questionnaire__contribution-option${value === option.value ? ' selected' : ''}`}
+            style={{ minHeight: `${SHARED_CONTRIBUTION_OPTION_MIN_HEIGHT_PX}px` }}
           >
             <input
+              id={getSharedContributionInputId(option.value)}
               type="radio"
               name="shared-contribution"
               value={option.value}
               checked={value === option.value}
               onChange={() => onChange(option.value)}
+              style={{ width: '18px', height: '18px' }}
             />
             <span className="shared-questionnaire__contribution-number">{option.value}</span>
             {'label' in option && (
@@ -2778,7 +2795,10 @@ export default function App() {
   const [liveKitParticipants, setLiveKitParticipants] = useState<Map<string, LiveKitParticipant>>(new Map());
   const isParticipantPage = !urlParams.has('admin') && !isMobileMode && !isSimMode;
   const initialTaskMode: TaskMode = isMainAdminPage ? 'shared-single-cursor' : 'manual-instruction';
-  const initialExperimentTaskType: ExperimentTaskType | null = (isMainAdminPage || isParticipantPage) ? 'cursor-control-20260706' : null;
+  const initialExperimentTaskType: ExperimentTaskType | null = getInitialExperimentTaskType(
+    isMainAdminPage,
+    isParticipantPage,
+  );
   const [taskMode, setTaskMode] = useState<TaskMode>(initialTaskMode);
   /**
    * The experiment-task type (when known) — set by the server agent at trial
@@ -2901,7 +2921,13 @@ export default function App() {
   const [participantStartClicked, setParticipantStartClicked] = useState(false);
   const [participantStartRequestPending, setParticipantStartRequestPending] = useState(false);
   const [participantStartError, setParticipantStartError] = useState<string | null>(null);
-  const [task9Score, setTask9Score] = useState<{ trialKey: string; score: number } | null>(null);
+  const sharedQuestionnaireRevealRequestRef = useRef(0);
+  const [task9Score, setTask9Score] = useState<{
+    trialKey: string;
+    trialNumber: number;
+    phase: string | undefined;
+    score: number;
+  } | null>(null);
   const sharedCursorTransitionTimerRef = useRef<number | null>(null);
   const clearSharedCursorTransitionTimer = useCallback(() => {
     if (sharedCursorTransitionTimerRef.current !== null) {
@@ -2964,6 +2990,7 @@ export default function App() {
     const [isPointerLocked, setIsPointerLocked] = useState(false);
     const [task7PointerLockRecoveryRequired, setTask7PointerLockRecoveryRequired] = useState(false);
     const activeSharedTrackingTrialKeyRef = useRef<string | null>(null);
+    const task9InterTrialPointerLockGuardRef = useRef(false);
     const [sharedTrackingEscInterrupted, setSharedTrackingEscInterrupted] = useState(false);
     const sharedTrackingEscInterruptedRef = useRef(false);
     const [isKicked, setIsKicked] = useState(false);
@@ -3583,7 +3610,14 @@ export default function App() {
       const trialKey = typeof detail.trialKey === 'string' ? detail.trialKey : '';
       const score = Number(detail.score);
       if (trialKey && Number.isFinite(score)) {
-        setTask9Score({ trialKey, score });
+        const trialNumber = Number(detail.trialNumber ?? 0);
+        const phase = typeof detail.phase === 'string' ? detail.phase : undefined;
+        setTask9Score({
+          trialKey,
+          trialNumber: Number.isFinite(trialNumber) ? trialNumber : 0,
+          phase,
+          score,
+        });
       }
     };
     const handleScoreState = (event: Event) => {
@@ -4813,18 +4847,23 @@ export default function App() {
               if (alreadyOnThisTrial) {
                 return;
               }
-              setSharedQuestionnaire({
-                visible: true,
-                trialNumber: message.trialNumber,
-                kind: message.kind ?? 'legacy',
-                agency: null,
-                partnership: null,
-                contribution: null,
-                submitted: false,
-                submitting: false,
+              const revealRequest = ++sharedQuestionnaireRevealRequestRef.current;
+              void waitForPointerLockRelease(document).then(() => {
+                if (sharedQuestionnaireRevealRequestRef.current !== revealRequest) return;
+                setSharedQuestionnaire({
+                  visible: true,
+                  trialNumber: message.trialNumber,
+                  kind: message.kind ?? 'legacy',
+                  agency: null,
+                  partnership: null,
+                  contribution: null,
+                  submitted: false,
+                  submitting: false,
+                });
               });
             }
           } else if (message.type === 'hideSharedCursorQuestionnaire') {
+            sharedQuestionnaireRevealRequestRef.current += 1;
             setSharedQuestionnaire((prev) => ({ ...prev, visible: false }));
           }
         }, [displayMode, hideCursor, targetVisible, useVirtualCursor, taskMode, experimentTaskType, yesNoAreas, showClickAreaOverlay, guideTrackingRunning, joystickMultiplier, participantCursorSize, averageCursorSize, circleTargetSize, randomTargetSize, groupAssignments, task9SharedFeedbackEnabled, sendControlMessage, roomName, tokenServerUrl, circleTargetRadius, clearSharedCursorTransitionTimer, sharedQuestionnaire]);
@@ -5667,6 +5706,11 @@ export default function App() {
         taskMode: taskModeRef.current,
         phase: sharedCursorControlRef.current.phase,
         hasActiveTrackingTrial: activeSharedTrackingTrialKeyRef.current !== null,
+        hasActivePointToPointTrial: experimentTaskTypeRef.current === 'task9'
+          && sharedCursorControlRef.current.enabled
+          && targetVisibleRef.current
+          && targetStateRef.current.trajectoryParams?.task9PointToPoint === true,
+        hasInterTrialPointToPointInterval: task9InterTrialPointerLockGuardRef.current,
         isAdmin: isAdminRef.current,
       })) {
         sharedTrackingEscInterruptedRef.current = true;
@@ -5676,7 +5720,9 @@ export default function App() {
         // participant clicks back into pointer-lock mode.
         setTask7PointerLockRecoveryRequired(true);
         const identity = roomRef.current?.localParticipant?.identity;
-        const trialKey = activeSharedTrackingTrialKeyRef.current;
+        const pointToPointTrialKey = targetStateRef.current.trajectoryParams?.trialKey;
+        const trialKey = activeSharedTrackingTrialKeyRef.current
+          ?? (typeof pointToPointTrialKey === 'string' ? pointToPointTrialKey : null);
         const room = roomRef.current;
         if (identity && trialKey && room) {
           const message: EscPressedMessage = {
@@ -7006,12 +7052,12 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [showTask7WaitingPreview, realParticipantConnectionCount]);
   useEffect(() => {
-    if (!showTask7WaitingPreview || realParticipantConnectionCount < 2) {
+    if (shouldResetParticipantStartConfirmation(realParticipantConnectionCount)) {
       setParticipantStartClicked(false);
       setParticipantStartRequestPending(false);
       setParticipantStartError(null);
     }
-  }, [showTask7WaitingPreview, realParticipantConnectionCount]);
+  }, [realParticipantConnectionCount]);
 
   const handleParticipantStartClick = useCallback(async () => {
     if (participantStartClicked || participantStartRequestPending) return;
@@ -7161,11 +7207,32 @@ export default function App() {
     task9SharedFeedbackEnabled,
   ]);
 
+  const task9CompletionMessageVisible = broadcastMessages.some((message) => (
+    message.position === 'bottom' && isTask9CompletionMessage(message.text)
+  ));
+  useEffect(() => {
+    task9InterTrialPointerLockGuardRef.current = experimentTaskType === 'task9'
+      && taskMode === 'shared-single-cursor'
+      && task9CompletionMessageVisible
+      && !sharedQuestionnaire.visible;
+  }, [
+    experimentTaskType,
+    sharedQuestionnaire.visible,
+    task9CompletionMessageVisible,
+    taskMode,
+  ]);
+  const showTask9QuestionnaireScore = experimentTaskType === 'task9'
+    && task9Score !== null
+    && sharedQuestionnaire.kind === 'contribution'
+    && shouldShowTask9QuestionnaireScore(
+      task9Score.phase,
+      task9Score.trialNumber,
+      sharedQuestionnaire.trialNumber,
+      sharedQuestionnaire.visible,
+    );
   const showTask9CompletionScore = experimentTaskType === 'task9'
     && task9Score !== null
-    && broadcastMessages.some((message) => (
-      message.position === 'bottom' && isTask9CompletionMessage(message.text)
-    ));
+    && shouldShowTask9CompletionScore(task9Score.phase, task9CompletionMessageVisible);
 
   const p5StageCursors = useMemo<P5Dot[]>(() => {
     // sketch.style.cursor wins over app-state default. This lets a sketch
@@ -7279,7 +7346,13 @@ export default function App() {
     }
     if (displayedAverageCursor) {
       const avgDiameter = sketchStyle?.average?.diameter ?? averageCursorSize;
-      const avgFill = sketchStyle?.average?.fill ?? '#1d4ed8';
+      const avgFill = experimentTaskType === 'task9'
+        ? getTask9SharedCursorFill(shouldShowTask9SharedFeedback(
+          task9SharedFeedbackEnabled,
+          sharedCursorControl.enabled,
+          sharedCursorControl.phase,
+        ))
+        : (sketchStyle?.average?.fill ?? '#1d4ed8');
       const pos = shouldRotateTask8SharedDisplay
         ? rotatePointCounterClockwise90AroundCenter(displayedAverageCursor)
         : displayedAverageCursor;
@@ -7295,7 +7368,7 @@ export default function App() {
       }];
     }
     return [];
-  }, [showAverageCursor, groupAverages, displayedAverageCursor, averageCursorSize, shouldShowLabels, sketchStyle, taskMode, shouldRotateTask8SharedDisplay]);
+  }, [showAverageCursor, groupAverages, displayedAverageCursor, averageCursorSize, shouldShowLabels, sketchStyle, taskMode, shouldRotateTask8SharedDisplay, experimentTaskType, task9SharedFeedbackEnabled, sharedCursorControl.enabled, sharedCursorControl.phase]);
 
   const p5StageLines = useMemo<P5Line[]>(() => {
     const result: P5Line[] = [];
@@ -9161,8 +9234,18 @@ export default function App() {
             yesNo={p5StageYesNo}
           />
           {sharedQuestionnaire.visible && !isAdmin && (
-            <div className="shared-questionnaire">
-              <div className="shared-questionnaire__panel">
+            <div className={`shared-questionnaire${showTask9QuestionnaireScore ? ' shared-questionnaire--task9-score' : ''}`}>
+              {showTask9QuestionnaireScore && (
+                <div className="task9-shared-questionnaire-score">
+                  Score: {task9Score?.score ?? 0}
+                </div>
+              )}
+              <div
+                className="shared-questionnaire__panel"
+                style={sharedQuestionnaire.kind === 'contribution'
+                  ? { width: `min(100%, ${SHARED_CONTRIBUTION_PANEL_MAX_WIDTH_PX}px)` }
+                  : undefined}
+              >
                 {sharedQuestionnaire.kind === 'contribution' ? (
                   <SharedContributionQuestion
                     question={getSharedContributionQuestion(experimentTaskType)}

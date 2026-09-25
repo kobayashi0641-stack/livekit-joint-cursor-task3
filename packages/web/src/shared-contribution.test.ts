@@ -57,6 +57,24 @@ test('shared contribution questionnaire runs from 7 to 1 with the requested anch
   assert.equal(copy.isSharedContributionSelected?.(9), false);
 });
 
+test('shared contribution choices have distinct controls and generous click targets', () => {
+  const ui = contribution as unknown as {
+    SHARED_CONTRIBUTION_PANEL_MAX_WIDTH_PX?: number;
+    SHARED_CONTRIBUTION_OPTION_MIN_HEIGHT_PX?: number;
+    SHARED_CONTRIBUTION_OPTION_GAP_PX?: number;
+    getSharedContributionInputId?: (value: number) => string;
+  };
+  const ids = contribution.SHARED_CONTRIBUTION_OPTIONS.map((option) => (
+    ui.getSharedContributionInputId?.(option.value)
+  ));
+
+  assert.equal(typeof ui.getSharedContributionInputId, 'function');
+  assert.equal(new Set(ids).size, contribution.SHARED_CONTRIBUTION_OPTIONS.length);
+  assert.ok((ui.SHARED_CONTRIBUTION_PANEL_MAX_WIDTH_PX ?? 0) >= 520);
+  assert.ok((ui.SHARED_CONTRIBUTION_OPTION_MIN_HEIGHT_PX ?? 0) >= 96);
+  assert.ok((ui.SHARED_CONTRIBUTION_OPTION_GAP_PX ?? 0) >= 8);
+});
+
 test('Task9 asks participants to rate their contribution to earning the points', () => {
   const getQuestion = (
     contribution as unknown as {

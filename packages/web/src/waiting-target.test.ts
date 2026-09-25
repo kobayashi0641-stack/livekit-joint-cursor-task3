@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   getWaitingTargetFill,
   getWaitingTargetPosition,
+  shouldResetParticipantStartConfirmation,
   shouldShowCursorControlWaitingPreview,
 } from './waiting-target.js';
 
@@ -33,4 +34,11 @@ test('waiting target remains visible when stale state says a previous experiment
     clickAreaOverlayVisible: false,
     hasBottomBroadcast: false,
   }), true);
+});
+
+test('START confirmation survives transient waiting-screen changes until the participant pair breaks', () => {
+  assert.equal(shouldResetParticipantStartConfirmation(2), false);
+  assert.equal(shouldResetParticipantStartConfirmation(3), false);
+  assert.equal(shouldResetParticipantStartConfirmation(1), true);
+  assert.equal(shouldResetParticipantStartConfirmation(0), true);
 });

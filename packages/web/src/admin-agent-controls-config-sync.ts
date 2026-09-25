@@ -20,6 +20,15 @@ export const POINT_TO_POINT_ADMIN_DEFAULTS: PointToPointAdminConfig = {
   instructionDurationMs: 4000,
 };
 
+export function getInitialExperimentTaskType(
+  isMainAdminPage: boolean,
+  isParticipantPage: boolean,
+): 'task9' | null {
+  return isMainAdminPage || isParticipantPage
+    ? POINT_TO_POINT_ADMIN_DEFAULTS.taskType
+    : null;
+}
+
 export function shouldSyncAgentConfigFromStatus(hasLoadedInitialConfig: boolean, status: AgentStatus) {
   return !hasLoadedInitialConfig && status === 'idle';
 }

@@ -13,6 +13,11 @@ export function getWaitingTargetFill(hasCursorInside: boolean): string {
   return hasCursorInside ? '#16a34a' : '#dc2626';
 }
 
+/** Keep a successful START confirmation until the connected pair actually breaks. */
+export function shouldResetParticipantStartConfirmation(participantCount: number): boolean {
+  return participantCount < 2;
+}
+
 type CursorControlWaitingPreviewState = {
   connected: boolean;
   isCursorControlTask: boolean;

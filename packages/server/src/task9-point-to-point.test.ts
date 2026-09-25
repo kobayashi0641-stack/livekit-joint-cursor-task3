@@ -49,16 +49,30 @@ test('Task9 uses a 30-second baseline/shared/washout point-to-point sequence', (
 
 test('Task9 instructions include the shared-trial contribution rating page', () => {
   assert.deepEqual(task9Task.generateInstructions(DEFAULT_EXPERIMENT_CONFIG), [
-    'Reach as many red targets as possible within the time limit. A point is awarded only after the cursor remains continuously inside the red target for 50 milliseconds.',
-    'You will first complete baseline trials using your own cursor and your own score.',
-    'After that, you will control a shared cursor with the other participant and earn a shared score.',
+    'Reach as many red targets as possible within 30 seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.',
+    'You will first complete baseline trials using your own cursor.',
+    'After that, you will control a shared cursor with the other participant.',
     'After each shared-cursor trial, rate your contribution to earning the points.',
-    'Finally, you will complete baseline trials again using your own cursor and your own score.',
+    'Finally, you will complete baseline trials again using your own cursor.',
   ]);
+});
+
+test('Task9 instruction uses the configured trial duration', () => {
+  const instructions = task9Task.generateInstructions({
+    ...DEFAULT_EXPERIMENT_CONFIG,
+    trialDurationSeconds: 45,
+  });
+
+  assert.equal(
+    instructions[0],
+    'Reach as many red targets as possible within 45 seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.',
+  );
 });
 
 test('Task9 clears the inter-trial upload notice immediately before countdown setup', async () => {
   const calls: string[] = [];
+  const metadata: Array<Record<string, unknown>> = [];
+  const targetParams: Array<Record<string, unknown>> = [];
   const noop = async () => undefined;
   await runTrialBody({
     config: { ...DEFAULT_EXPERIMENT_CONFIG, taskType: 'task9' },
@@ -72,8 +86,11 @@ test('Task9 clears the inter-trial upload notice immediately before countdown se
     setSharedCursorControl: noop,
     setVirtualCursorPosition: async (x: number, y: number) => { calls.push(`reset:${x}:${y}`); },
     setTargetVisibility: noop,
-    setRecordingMetadata: noop,
-    publishInitialTargetWithTrajectory: async () => { calls.push('countdown-setup'); },
+    setRecordingMetadata: async (value: Record<string, unknown>) => { metadata.push(value); },
+    publishInitialTargetWithTrajectory: async (value: Record<string, unknown>) => {
+      targetParams.push(value);
+      calls.push('countdown-setup');
+    },
     sleep: async (durationMs: number) => { calls.push(`sleep:${durationMs}`); },
   } as never);
 
@@ -84,4 +101,6 @@ test('Task9 clears the inter-trial upload notice immediately before countdown se
     'reset:0.5:0.5',
     'sleep:30000',
   ]);
+  assert.equal(metadata[0]?.targetCount, 19);
+  assert.equal(targetParams[0]?.targetCount, 19);
 });

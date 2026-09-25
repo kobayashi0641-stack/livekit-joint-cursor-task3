@@ -35,6 +35,50 @@ test('pointer-lock recovery is not shown outside active participant tracking', (
   assert.equal(shouldRequireImmediatePointerLockRecovery({ ...base, taskMode: 'manual-instruction' }), false);
 });
 
+test('Task9 point-to-point trials trigger Esc recovery without the legacy tracking event', () => {
+  assert.equal(
+    shouldRequireImmediatePointerLockRecovery({
+      experimentTaskType: 'task9',
+      taskMode: 'shared-single-cursor',
+      phase: 'baseline',
+      hasActiveTrackingTrial: false,
+      hasActivePointToPointTrial: true,
+      isAdmin: false,
+    }),
+    true,
+  );
+});
+
+test('Task9 requires Esc recovery during the inter-trial completion interval', () => {
+  assert.equal(
+    shouldRequireImmediatePointerLockRecovery({
+      experimentTaskType: 'task9',
+      taskMode: 'shared-single-cursor',
+      phase: 'baseline',
+      hasActiveTrackingTrial: false,
+      hasActivePointToPointTrial: false,
+      hasInterTrialPointToPointInterval: true,
+      isAdmin: false,
+    }),
+    true,
+  );
+});
+
+test('Task9 does not force pointer lock while the shared-trial questionnaire is open', () => {
+  assert.equal(
+    shouldRequireImmediatePointerLockRecovery({
+      experimentTaskType: 'task9',
+      taskMode: 'shared-single-cursor',
+      phase: 'shared',
+      hasActiveTrackingTrial: false,
+      hasActivePointToPointTrial: false,
+      hasInterTrialPointToPointInterval: false,
+      isAdmin: false,
+    }),
+    false,
+  );
+});
+
 test('the participant who remains locked does not see the partner lock-wait message during tracking', () => {
   assert.match(
     appSource,

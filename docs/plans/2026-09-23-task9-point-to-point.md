@@ -184,4 +184,3 @@ git diff --check
 ```
 
 Expected: all commands exit 0. Inspect the Task9 diff to verify no Task1/Task8 behavior changed.
-

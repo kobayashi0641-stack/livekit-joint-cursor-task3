@@ -31,6 +31,14 @@ export const SHARED_CONTRIBUTION_OPTIONS = [
 
 export const SHARED_CONTRIBUTION_SUBMIT_LABEL = 'OK';
 
+export const SHARED_CONTRIBUTION_PANEL_MAX_WIDTH_PX = 520;
+export const SHARED_CONTRIBUTION_OPTION_MIN_HEIGHT_PX = 104;
+export const SHARED_CONTRIBUTION_OPTION_GAP_PX = 8;
+
+export function getSharedContributionInputId(value: number): string {
+  return `shared-contribution-${value}`;
+}
+
 export function isSharedContributionSelected(value: unknown): value is number {
   return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 7;
 }

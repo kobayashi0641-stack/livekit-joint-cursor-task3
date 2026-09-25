@@ -25,11 +25,11 @@ test('Task 1 final baseline explanation moves to the fifth instruction image', (
 
 test('Task 2 point-to-point instruction pages use the supplied five images', () => {
   const pages = [
-    ['Reach as many red targets as possible within the time limit. A point is awarded only after the cursor remains continuously inside the red target for 50 milliseconds.', '/task9-instruction1.png'],
-    ['You will first complete baseline trials using your own cursor and your own score.', '/task9-instruction2.png'],
-    ['After that, you will control a shared cursor with the other participant and earn a shared score.', '/task9-instruction3.png'],
+    ['Reach as many red targets as possible within 45 seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.', '/task9-instruction1.png'],
+    ['You will first complete baseline trials using your own cursor.', '/task9-instruction2.png'],
+    ['After that, you will control a shared cursor with the other participant.', '/task9-instruction3.png'],
     ['After each shared-cursor trial, rate your contribution to earning the points.', '/task9-instruction4.png'],
-    ['Finally, you will complete baseline trials again using your own cursor and your own score.', '/task9-instruction5.png'],
+    ['Finally, you will complete baseline trials again using your own cursor.', '/task9-instruction5.png'],
   ] as const;
 
   for (const [instruction, imageSrc] of pages) {

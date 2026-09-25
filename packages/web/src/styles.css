@@ -1987,6 +1987,20 @@ button.primary:disabled {
   background: rgba(248, 250, 252, 0.94);
 }
 
+.shared-questionnaire--task9-score {
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.task9-shared-questionnaire-score {
+  color: #16a34a;
+  font-size: 72px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
 .shared-questionnaire__panel {
   width: min(100%, 460px);
   max-width: 100%;

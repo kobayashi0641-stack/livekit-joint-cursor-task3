@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import task9Sketch from './sketch.js';
+import * as task9PointToPoint from './point-to-point.js';
 import {
   advanceTask9SharedTargetParams,
   createTask9TrialState,
@@ -19,6 +20,21 @@ import {
 test('Task9 defaults to a 30-second point-to-point trial', () => {
   assert.equal(task9Sketch.label, 'Point-to-Point Task');
   assert.equal(task9Sketch.defaults?.trialDurationSeconds, 30);
+});
+
+test('Task9 target diameter is 30 pixels', () => {
+  assert.equal(task9Sketch.style?.target?.size, 30);
+});
+
+test('shared cursor stays blue unless individual cursor feedback is enabled', () => {
+  const getTask9SharedCursorFill = (task9PointToPoint as unknown as {
+    getTask9SharedCursorFill?: (showIndividualFeedback: boolean) => string;
+  }).getTask9SharedCursorFill;
+  assert.equal(typeof getTask9SharedCursorFill, 'function');
+  if (!getTask9SharedCursorFill) return;
+  assert.equal(getTask9SharedCursorFill(false), '#2563eb');
+  assert.equal(getTask9SharedCursorFill(true), '#111827');
+  assert.equal(task9Sketch.style?.average?.fill, '#2563eb');
 });
 
 test('Task9 renders the generic moving red target while participants are waiting', () => {
@@ -53,10 +69,10 @@ test('Task9 renders the generic moving red target while participants are waiting
   assert.deepEqual(ellipses, [[340.2, 270, 44, 44]]);
 });
 
-test('creates 13 unique in-bounds triangular-lattice vertices', () => {
+test('creates 19 unique in-bounds triangular-lattice vertices with an outer two-spacing hexagon', () => {
   const grid = createTask9TargetGrid();
-  assert.equal(grid.length, 13);
-  assert.equal(new Set(grid.map((point) => `${point.x.toFixed(6)},${point.y.toFixed(6)}`)).size, 13);
+  assert.equal(grid.length, 19);
+  assert.equal(new Set(grid.map((point) => `${point.x.toFixed(6)},${point.y.toFixed(6)}`)).size, 19);
   assert.deepEqual(grid[0], { x: 0.5, y: 0.5 });
   for (const point of grid) {
     assert.ok(point.x >= 0.1 && point.x <= 0.9);
@@ -66,19 +82,43 @@ test('creates 13 unique in-bounds triangular-lattice vertices', () => {
   const center = grid[0];
   const nearestDistances = grid.slice(1, 7).map((point) => Math.hypot(point.x - center.x, point.y - center.y));
   assert.ok(nearestDistances.every((distance) => Math.abs(distance - nearestDistances[0]) < 1e-9));
+  const outerHexagonDistances = grid.slice(13, 19).map((point) => Math.hypot(point.x - center.x, point.y - center.y));
+  assert.ok(outerHexagonDistances.every((distance) => Math.abs(distance - nearestDistances[0] * 2) < 1e-9));
 });
 
-test('target selection is deterministic, avoids the center initially, and never repeats immediately', () => {
+test('target selection is deterministic and never repeats immediately', () => {
   const firstA = selectNextTargetIndex(1234, 0, null, 'participant-a');
   const firstB = selectNextTargetIndex(1234, 0, null, 'participant-a');
   assert.equal(firstA, firstB);
-  assert.notEqual(firstA, 0);
 
   let previous = firstA;
   for (let sequence = 1; sequence < 100; sequence += 1) {
     const next = selectNextTargetIndex(1234, sequence, previous, 'participant-a');
     assert.notEqual(next, previous);
     previous = next;
+  }
+});
+
+test('target selection uses a newly shuffled 19-target set without repeats at set boundaries', () => {
+  const targetCount = createTask9TargetGrid().length;
+  const sequence: number[] = [];
+  let previous: number | null = null;
+  for (let index = 0; index < targetCount * 4; index += 1) {
+    previous = selectNextTargetIndex(0x12345678, index, previous, 'participant-a');
+    sequence.push(previous);
+  }
+
+  const expectedTargets = Array.from({ length: targetCount }, (_, index) => index);
+  const sets = Array.from({ length: 4 }, (_, setIndex) => (
+    sequence.slice(setIndex * targetCount, (setIndex + 1) * targetCount)
+  ));
+
+  for (const set of sets) {
+    assert.deepEqual([...set].sort((a, b) => a - b), expectedTargets);
+  }
+  for (let setIndex = 1; setIndex < sets.length; setIndex += 1) {
+    assert.notDeepEqual(sets[setIndex], sets[setIndex - 1]);
+    assert.notEqual(sets[setIndex][0], sets[setIndex - 1][targetCount - 1]);
   }
 });
 
@@ -221,4 +261,31 @@ test('completion score follows only the inter-trial completion/upload message wi
   assert.equal(isTask9CompletionMessage('Trial 10 of 10 is complete.'), true);
   assert.equal(isTask9CompletionMessage(''), false);
   assert.equal(isTask9CompletionMessage('The next trial will start soon.'), false);
+});
+
+test('Shared score appears with the questionnaire but not on the later upload/wait screen', () => {
+  const policy = task9PointToPoint as unknown as {
+    shouldShowTask9QuestionnaireScore?: (
+      phase: string | undefined,
+      scoreTrialNumber: number,
+      questionnaireTrialNumber: number,
+      questionnaireVisible: boolean,
+    ) => boolean;
+    shouldShowTask9CompletionScore?: (
+      phase: string | undefined,
+      completionMessageVisible: boolean,
+    ) => boolean;
+  };
+
+  assert.equal(typeof policy.shouldShowTask9QuestionnaireScore, 'function');
+  assert.equal(typeof policy.shouldShowTask9CompletionScore, 'function');
+  if (!policy.shouldShowTask9QuestionnaireScore || !policy.shouldShowTask9CompletionScore) return;
+
+  assert.equal(policy.shouldShowTask9QuestionnaireScore('shared', 4, 4, true), true);
+  assert.equal(policy.shouldShowTask9QuestionnaireScore('shared', 3, 4, true), false);
+  assert.equal(policy.shouldShowTask9QuestionnaireScore('baseline', 4, 4, true), false);
+  assert.equal(policy.shouldShowTask9CompletionScore('shared', true), false);
+  assert.equal(policy.shouldShowTask9CompletionScore('baseline', true), true);
+  assert.equal(policy.shouldShowTask9CompletionScore('washout', true), true);
+  assert.equal(policy.shouldShowTask9CompletionScore('baseline', false), false);
 });

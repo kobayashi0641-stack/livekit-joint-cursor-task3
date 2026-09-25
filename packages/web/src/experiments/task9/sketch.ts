@@ -12,8 +12,8 @@ import {
 
 type Task9Phase = 'baseline' | 'shared' | 'washout';
 
-const TARGET_DIAMETER = 44;
-const GRID_OUTLINE_DIAMETER = 44;
+const TARGET_DIAMETER = 30;
+const GRID_OUTLINE_DIAMETER = 30;
 const GRID = createTask9TargetGrid();
 
 let trialState: Task9TrialState | null = null;
@@ -162,7 +162,7 @@ const sketch: TaskSketch = {
 
   style: {
     cursor: { diameter: 16, fill: '#2563eb', opacity: 1 },
-    average: { diameter: 16, fill: '#111827' },
+    average: { diameter: 16, fill: '#2563eb' },
     target: { shape: 'circle', size: TARGET_DIAMETER, fill: 'rgba(0,0,0,0)' },
     yesNo: { size: 80 },
   },

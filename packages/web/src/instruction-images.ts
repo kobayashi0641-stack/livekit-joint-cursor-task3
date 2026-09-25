@@ -6,18 +6,31 @@ const SHARED_CURSOR_INSTRUCTION = 'After that, you will control a shared cursor 
 const SHARED_RATING_INSTRUCTION = 'After each trial, rate how much you felt you contributed to controlling the shared cursor.';
 const FINAL_BASELINE_INSTRUCTION = 'Finally, you will complete baseline trials again using your own cursor only.';
 const TASK8_SHARED_TRIAL_INSTRUCTION = 'From the next trial, you will control a shared cursor with your partner. You can only move it forward and backward, while your partner will control it left and right.';
-const TASK9_GOAL_INSTRUCTION = 'Reach as many red targets as possible within the time limit. A point is awarded only after the cursor remains continuously inside the red target for 50 milliseconds.';
-const TASK9_BASELINE_INSTRUCTION = 'You will first complete baseline trials using your own cursor and your own score.';
-const TASK9_SHARED_CURSOR_INSTRUCTION = 'After that, you will control a shared cursor with the other participant and earn a shared score.';
+const TASK9_GOAL_INSTRUCTION_PREFIX = 'Reach as many red targets as possible within ';
+const TASK9_GOAL_INSTRUCTION_SUFFIX = ' seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.';
+const TASK9_BASELINE_INSTRUCTION = 'You will first complete baseline trials using your own cursor.';
+const TASK9_SHARED_CURSOR_INSTRUCTION = 'After that, you will control a shared cursor with the other participant.';
 const TASK9_SHARED_RATING_INSTRUCTION = 'After each shared-cursor trial, rate your contribution to earning the points.';
-const TASK9_FINAL_BASELINE_INSTRUCTION = 'Finally, you will complete baseline trials again using your own cursor and your own score.';
+const TASK9_FINAL_BASELINE_INSTRUCTION = 'Finally, you will complete baseline trials again using your own cursor.';
+
+function isTask9GoalInstruction(instruction: string): boolean {
+  if (!instruction.startsWith(TASK9_GOAL_INSTRUCTION_PREFIX)
+    || !instruction.endsWith(TASK9_GOAL_INSTRUCTION_SUFFIX)) {
+    return false;
+  }
+  const duration = instruction.slice(
+    TASK9_GOAL_INSTRUCTION_PREFIX.length,
+    -TASK9_GOAL_INSTRUCTION_SUFFIX.length,
+  );
+  return duration.trim() !== '' && Number.isFinite(Number(duration));
+}
 
 export function getInstructionImageSrc(
   instruction: string,
   experimentTaskType?: ExperimentTaskType | null,
 ): string | null {
   if (experimentTaskType === 'task9') {
-    if (instruction === TASK9_GOAL_INSTRUCTION) return '/task9-instruction1.png';
+    if (isTask9GoalInstruction(instruction)) return '/task9-instruction1.png';
     if (instruction === TASK9_BASELINE_INSTRUCTION) return '/task9-instruction2.png';
     if (instruction === TASK9_SHARED_CURSOR_INSTRUCTION) return '/task9-instruction3.png';
     if (instruction === TASK9_SHARED_RATING_INSTRUCTION) return '/task9-instruction4.png';
@@ -51,7 +64,7 @@ export function getInstructionImageSrc(
 }
 
 export function getInstructionImageAlt(instruction: string): string {
-  if (instruction === TASK9_GOAL_INSTRUCTION) {
+  if (isTask9GoalInstruction(instruction)) {
     return 'A point-to-point task screen shows the score, cursor, and red target.';
   }
   if (instruction === TASK9_BASELINE_INSTRUCTION) {
