@@ -1836,6 +1836,7 @@ export class ExperimentAgent {
       publishInitialTargetWithTrajectory: (params) =>
         this.publishInitialTargetWithTrajectory(params),
       setRecordingMetadata: (metadata) => this.setRecordingMetadata(metadata),
+      getExperimentParticipantIdentities: () => this.getExperimentParticipantIdentities(),
       waitForSharedTrackingCompletions: (trialKey, requiredCount, timeoutMs) =>
         this.waitForSharedTrackingCompletions(trialKey, requiredCount, timeoutMs, signal),
       setSharedCursorControl: (params) => this.setSharedCursorControl(params),

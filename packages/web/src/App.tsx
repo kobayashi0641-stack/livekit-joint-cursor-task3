@@ -1391,6 +1391,7 @@ function ReplayModal({ recording, onClose }: { recording: RecordingRecord; onClo
                 <TaskStage
                   background="white"
                   showBoundaryBox
+                  isObserver
                   viewport={{
                     minX: trajectoryBounds.minX,
                     minY: trajectoryBounds.minY,
@@ -2615,6 +2616,7 @@ function ViewerMode({
       <div className="viewer-stage">
         <TaskStage
           taskMode={taskMode}
+          isObserver
           cursors={stageCursors}
           averages={stageAverages}
           lines={stageLines}
@@ -9226,6 +9228,8 @@ export default function App() {
           <TaskStage
             taskMode={taskMode}
             experimentTaskType={experimentTaskType}
+            viewerIdentity={localIdentityRef.current}
+            isObserver={isAdmin || isViewerMode}
             cursors={p5StageCursors}
             averages={p5StageAverages}
             lines={p5StageLines}

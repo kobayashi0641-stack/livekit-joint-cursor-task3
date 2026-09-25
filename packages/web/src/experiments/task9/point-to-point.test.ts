@@ -7,6 +7,7 @@ import {
   advanceTask9SharedTargetParams,
   createTask9TrialState,
   createTask9TargetGrid,
+  getTask9AsymmetricVisibility,
   getTask9Clock,
   getTask9RenderState,
   isTask9CompletionMessage,
@@ -16,6 +17,148 @@ import {
   updateTask9TrialHit,
   updateDwellState,
 } from './point-to-point.js';
+
+const asymmetricRoles = {
+  cursorIdentity: 'participant-a',
+  targetIdentity: 'participant-b',
+  activatesAfterSequence: 0,
+};
+
+test('Task9 stays fully visible to both participants through the first target', () => {
+  for (const viewerIdentity of ['participant-a', 'participant-b']) {
+    assert.deepEqual(getTask9AsymmetricVisibility({
+      phase: 'shared',
+      sequence: 0,
+      viewerIdentity,
+      isObserver: false,
+      roles: asymmetricRoles,
+      cursorInsideTarget: false,
+    }), {
+      showSharedCursor: true,
+      activeTargetFill: '#dc2626',
+    });
+  }
+});
+
+test('Task9 applies cursor-only and target-only roles after the first acquisition', () => {
+  assert.deepEqual(getTask9AsymmetricVisibility({
+    phase: 'shared',
+    sequence: 1,
+    viewerIdentity: 'participant-a',
+    isObserver: false,
+    roles: asymmetricRoles,
+    cursorInsideTarget: false,
+  }), {
+    showSharedCursor: true,
+    activeTargetFill: null,
+  });
+  assert.deepEqual(getTask9AsymmetricVisibility({
+    phase: 'shared',
+    sequence: 1,
+    viewerIdentity: 'participant-b',
+    isObserver: false,
+    roles: asymmetricRoles,
+    cursorInsideTarget: false,
+  }), {
+    showSharedCursor: false,
+    activeTargetFill: '#dc2626',
+  });
+});
+
+test('Task9 shows green hit feedback to both asymmetric roles', () => {
+  for (const viewerIdentity of ['participant-a', 'participant-b']) {
+    assert.equal(getTask9AsymmetricVisibility({
+      phase: 'shared',
+      sequence: 3,
+      viewerIdentity,
+      isObserver: false,
+      roles: asymmetricRoles,
+      cursorInsideTarget: true,
+    }).activeTargetFill, '#16a34a');
+  }
+});
+
+test('Task9 observers and invalid or inapplicable assignments remain symmetric', () => {
+  const symmetricCases = [
+    { phase: 'baseline', viewerIdentity: 'participant-a', isObserver: false, roles: asymmetricRoles },
+    { phase: 'shared', viewerIdentity: 'admin:main', isObserver: true, roles: asymmetricRoles },
+    { phase: 'shared', viewerIdentity: 'participant-c', isObserver: false, roles: asymmetricRoles },
+    { phase: 'shared', viewerIdentity: 'participant-a', isObserver: false, roles: null },
+  ];
+  for (const entry of symmetricCases) {
+    assert.deepEqual(getTask9AsymmetricVisibility({
+      ...entry,
+      sequence: 2,
+      cursorInsideTarget: false,
+    }), {
+      showSharedCursor: true,
+      activeTargetFill: '#dc2626',
+    });
+  }
+});
+
+test('Task9 sketch removes only the shared cursor for the target-only participant', () => {
+  const fills: string[] = [];
+  const p = {
+    BOLD: 'bold', LEFT: 'left', RIGHT: 'right', TOP: 'top', CENTER: 'center',
+    push() {}, pop() {}, strokeWeight() {}, stroke() {}, noFill() {}, circle() {},
+    noStroke() {}, textStyle() {}, textSize() {}, textAlign() {}, text() {},
+    fill(value: string) { fills.push(value); },
+  };
+  const scene = {
+    viewport: { minX: 0, minY: 0, rangeX: 1, rangeY: 1 },
+    taskMode: 'shared-single-cursor',
+    viewerIdentity: 'participant-b',
+    isObserver: false,
+    cursors: [],
+    averages: [{ id: 'avg', x: 0.5, y: 0.5, color: '#2563eb', size: 16 }],
+    lines: [],
+    target: {
+      x: 0.5,
+      y: 0.5,
+      shape: 'circle',
+      size: 30,
+      fill: 'rgba(0,0,0,0)',
+      trajectoryReceivedAt: Date.now(),
+      trajectoryParams: {
+        task9PointToPoint: true,
+        trialKey: 'asymmetric-render',
+        trialNumber: 4,
+        phase: 'shared',
+        seed: 7,
+        countdownMs: 0,
+        durationMs: 30000,
+        dwellMs: 50,
+        sequence: 1,
+        score: 1,
+        targetIndex: 1,
+        targetPresentedAt: Date.now(),
+        asymmetricRoles,
+      },
+    },
+    guide: null,
+    yesNo: null,
+  };
+  const coords = { sx: (x: number) => x * 540, sy: (y: number) => y * 540, W: 540, H: 540 };
+
+  const previousWindow = globalThis.window;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { dispatchEvent: () => true },
+  });
+  try {
+    task9Sketch.onDeactivate?.(p as never);
+    task9Sketch.drawTaskLayer(p as never, scene as never, coords);
+  } finally {
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: previousWindow,
+    });
+  }
+
+  assert.equal(scene.averages.length, 0);
+  assert.ok(fills.includes('#dc2626'));
+});
 
 test('Task9 defaults to a 30-second point-to-point trial', () => {
   assert.equal(task9Sketch.label, 'Point-to-Point Task');

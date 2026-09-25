@@ -39,6 +39,8 @@ export interface TaskStageProps {
   background?: string;
   /** Draw the dashed [0,1] reference rectangle (used by replay). */
   showBoundaryBox?: boolean;
+  viewerIdentity?: string | null;
+  isObserver?: boolean;
 
   cursors?: P5Dot[];
   averages?: P5Dot[];
@@ -121,6 +123,8 @@ export function TaskStage(props: TaskStageProps) {
           viewport: vp,
           background: cur.background,
           showBoundaryBox: cur.showBoundaryBox,
+          viewerIdentity: cur.viewerIdentity,
+          isObserver: cur.isObserver,
           taskMode: cur.taskMode ?? null,
           cursors: cur.cursors ?? [],
           averages: cur.averages ?? [],

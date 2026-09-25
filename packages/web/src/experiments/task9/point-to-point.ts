@@ -17,6 +17,62 @@ export type Task9RenderState = {
   targetFill: '#dc2626' | '#16a34a';
 };
 
+export type Task9AsymmetricRoles = {
+  cursorIdentity: string;
+  targetIdentity: string;
+  activatesAfterSequence: number;
+};
+
+export type Task9AsymmetricVisibility = {
+  showSharedCursor: boolean;
+  activeTargetFill: '#dc2626' | '#16a34a' | null;
+};
+
+function parseTask9AsymmetricRoles(value: unknown): Task9AsymmetricRoles | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<Task9AsymmetricRoles>;
+  if (
+    typeof candidate.cursorIdentity !== 'string'
+    || typeof candidate.targetIdentity !== 'string'
+    || candidate.cursorIdentity === candidate.targetIdentity
+    || typeof candidate.activatesAfterSequence !== 'number'
+    || !Number.isFinite(candidate.activatesAfterSequence)
+  ) {
+    return null;
+  }
+  return candidate as Task9AsymmetricRoles;
+}
+
+export function getTask9AsymmetricVisibility(input: {
+  phase: string | undefined;
+  sequence: number;
+  viewerIdentity: string | null | undefined;
+  isObserver: boolean;
+  roles: unknown;
+  cursorInsideTarget: boolean;
+}): Task9AsymmetricVisibility {
+  const activeTargetFill = input.cursorInsideTarget ? '#16a34a' : '#dc2626';
+  const roles = parseTask9AsymmetricRoles(input.roles);
+  const viewerHasRole = input.viewerIdentity === roles?.cursorIdentity
+    || input.viewerIdentity === roles?.targetIdentity;
+  const asymmetric = input.phase === 'shared'
+    && !input.isObserver
+    && viewerHasRole
+    && roles !== null
+    && input.sequence > roles.activatesAfterSequence;
+
+  if (!asymmetric) {
+    return { showSharedCursor: true, activeTargetFill };
+  }
+  if (input.viewerIdentity === roles.cursorIdentity) {
+    return {
+      showSharedCursor: true,
+      activeTargetFill: input.cursorInsideTarget ? '#16a34a' : null,
+    };
+  }
+  return { showSharedCursor: false, activeTargetFill };
+}
+
 export type Task9TrialState = {
   trialKey: string;
   seed: number;
