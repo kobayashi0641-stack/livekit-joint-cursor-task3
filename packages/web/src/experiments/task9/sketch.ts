@@ -3,6 +3,7 @@ import { drawTarget } from '../shared/draw';
 import {
   createTask9TargetGrid,
   createTask9TrialState,
+  getTask9AsymmetricVisibility,
   getTask9Clock,
   getTask9RenderState,
   syncTask9AuthoritativeState,
@@ -118,14 +119,14 @@ function drawGrid(
   p: Parameters<TaskSketch['drawTaskLayer']>[0],
   coords: CoordMap,
   activeIndex: number,
-  activeFill: string,
+  activeFill: string | null,
 ) {
   p.push();
   p.strokeWeight(2);
   for (let index = 0; index < GRID.length; index += 1) {
     const point = GRID[index];
-    const active = index === activeIndex;
-    if (active) {
+    const active = index === activeIndex && activeFill !== null;
+    if (active && activeFill) {
       p.stroke(activeFill);
       p.fill(activeFill);
     } else {
@@ -231,7 +232,21 @@ const sketch: TaskSketch = {
       return;
     }
 
-    drawGrid(p, coords, trialState.targetIndex, renderState.targetFill);
+    const visibility = getTask9AsymmetricVisibility({
+      phase: trial.phase,
+      sequence: trialState.sequence,
+      viewerIdentity: scene.viewerIdentity,
+      isObserver: scene.isObserver === true,
+      roles: scene.target?.trajectoryParams?.asymmetricRoles,
+      cursorInsideTarget: inside,
+    });
+    if (!visibility.showSharedCursor) {
+      scene.lines = [];
+      scene.cursors = [];
+      scene.averages = [];
+    }
+
+    drawGrid(p, coords, trialState.targetIndex, visibility.activeTargetFill);
     drawHud(p, coords, trialState.score, clock.remainingSeconds);
 
     if (!cursor) return;

@@ -193,6 +193,10 @@ export interface SketchScene {
   viewport: Viewport;
   background?: string;
   showBoundaryBox?: boolean;
+  /** Identity of the participant viewing this scene, when applicable. */
+  viewerIdentity?: string | null;
+  /** Admin, viewer, and replay surfaces observe the complete scene. */
+  isObserver?: boolean;
   taskMode?: TaskMode | null;
   cursors: P5Dot[];
   averages: P5Dot[];

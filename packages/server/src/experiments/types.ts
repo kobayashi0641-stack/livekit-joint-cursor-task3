@@ -167,6 +167,8 @@ export interface TrialContext {
   publishInitialTargetWithTrajectory(params: Record<string, unknown>): Promise<void>;
   /** Persist per-trial parameters alongside the active recording. */
   setRecordingMetadata(metadata: Record<string, unknown>): Promise<void>;
+  /** Return the currently connected non-admin experiment participant identities. */
+  getExperimentParticipantIdentities(): Promise<string[]>;
   waitForSharedTrackingCompletions(
     trialKey: string,
     requiredCount: number,

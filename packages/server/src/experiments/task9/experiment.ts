@@ -1,4 +1,8 @@
 import type { TrialContext } from '../types.js';
+import {
+  assignTask9AsymmetricRoles,
+  getTask9SharedTrialIndex,
+} from './asymmetric-roles.js';
 
 const COUNTDOWN_MS = 3000;
 const DWELL_MS = 50;
@@ -24,6 +28,13 @@ export async function runTrialBody(ctx: TrialContext): Promise<void> {
 
   const durationMs = ctx.durationSeconds * 1000;
   const trialKey = `${ctx.trialNumber}-${Date.now()}`;
+  const asymmetricRoles = phase === 'shared'
+    ? assignTask9AsymmetricRoles(
+        await ctx.getExperimentParticipantIdentities(),
+        config.sharedPhaseSeed,
+        getTask9SharedTrialIndex(ctx.trialNumber, config.cursorControlBaselineTrials),
+      )
+    : null;
   const gameParams = {
     task9PointToPoint: true,
     trialKey,
@@ -35,6 +46,7 @@ export async function runTrialBody(ctx: TrialContext): Promise<void> {
     targetCount: 19,
     shape: 'circle',
     durationMs,
+    ...(asymmetricRoles ? { asymmetricRoles } : {}),
   };
   await ctx.setRecordingMetadata({
     phase,
@@ -44,6 +56,7 @@ export async function runTrialBody(ctx: TrialContext): Promise<void> {
     dwellMs: DWELL_MS,
     durationMs,
     targetCount: 19,
+    asymmetricRoles,
     cursorControl: {
       phase,
       matrix: config.sharedMatrix,
