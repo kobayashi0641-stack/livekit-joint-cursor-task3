@@ -7939,7 +7939,7 @@ export default function App() {
                 </span>
               </div>
             )}
-            <h1>Online Point-to-Point Task</h1>
+            <h1>Online Point-to-Point Task v3</h1>
             <h2>Participant Information and Consent</h2>
 
             <div className="consent-text">

@@ -13,8 +13,8 @@ export type PointToPointAdminConfig = {
 export const POINT_TO_POINT_ADMIN_DEFAULTS: PointToPointAdminConfig = {
   taskType: 'task9',
   cursorControlBaselineTrials: 3,
-  cursorControlSharedTrials: 5,
-  cursorControlWashoutTrials: 2,
+  cursorControlSharedTrials: 6,
+  cursorControlWashoutTrials: 1,
   cursorControlAdaptationTrials: 0,
   trialDurationSeconds: 30,
   instructionDurationMs: 4000,

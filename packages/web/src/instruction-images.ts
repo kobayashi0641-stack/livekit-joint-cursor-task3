@@ -10,6 +10,8 @@ const TASK9_GOAL_INSTRUCTION_PREFIX = 'Reach as many red targets as possible wit
 const TASK9_GOAL_INSTRUCTION_SUFFIX = ' seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.';
 const TASK9_BASELINE_INSTRUCTION = 'You will first complete baseline trials using your own cursor.';
 const TASK9_SHARED_CURSOR_INSTRUCTION = 'After that, you will control a shared cursor with the other participant.';
+const TASK9_ASYMMETRIC_VIEWS_INSTRUCTION = 'After the first target, one of you will see only the shared cursor and the other will see only the red target.';
+const TASK9_ROLE_SWITCH_INSTRUCTION = 'Target-hit feedback remains visible to both. Your first roles are random and then switch in each trial.';
 const TASK9_SHARED_RATING_INSTRUCTION = 'After each shared-cursor trial, rate your contribution to earning the points.';
 const TASK9_FINAL_BASELINE_INSTRUCTION = 'Finally, you will complete baseline trials again using your own cursor.';
 
@@ -31,10 +33,12 @@ export function getInstructionImageSrc(
 ): string | null {
   if (experimentTaskType === 'task9') {
     if (isTask9GoalInstruction(instruction)) return '/task9-instruction1.png';
-    if (instruction === TASK9_BASELINE_INSTRUCTION) return '/task9-instruction2.png';
-    if (instruction === TASK9_SHARED_CURSOR_INSTRUCTION) return '/task9-instruction3.png';
-    if (instruction === TASK9_SHARED_RATING_INSTRUCTION) return '/task9-instruction4.png';
-    if (instruction === TASK9_FINAL_BASELINE_INSTRUCTION) return '/task9-instruction5.png';
+    if (instruction === TASK9_BASELINE_INSTRUCTION) return '/task9-instruction2-v3.png';
+    if (instruction === TASK9_SHARED_CURSOR_INSTRUCTION) return '/task9-instruction3-v3.png';
+    if (instruction === TASK9_ASYMMETRIC_VIEWS_INSTRUCTION) return '/task9-instruction4-views-only.png';
+    if (instruction === TASK9_ROLE_SWITCH_INSTRUCTION) return '/task9-instruction4-roles-v4.png';
+    if (instruction === TASK9_SHARED_RATING_INSTRUCTION) return '/task9-instruction4-v3.png';
+    if (instruction === TASK9_FINAL_BASELINE_INSTRUCTION) return '/task9-instruction5-v3.png';
   }
   if (instruction === MOVE_CURSOR_INSTRUCTION) {
     return experimentTaskType === 'task9' ? '/task9-instruction1.png' : '/task7-instruction1.png';
@@ -71,13 +75,19 @@ export function getInstructionImageAlt(instruction: string): string {
     return 'The first baseline block uses your own cursor for three trials.';
   }
   if (instruction === TASK9_SHARED_CURSOR_INSTRUCTION) {
-    return 'The shared block asks two participants to earn points together with a shared cursor.';
+    return 'The six-trial shared block asks two participants to earn points together with a shared cursor.';
+  }
+  if (instruction === TASK9_ASYMMETRIC_VIEWS_INSTRUCTION) {
+    return 'The cursor-only and target-only participant views are shown side by side.';
+  }
+  if (instruction === TASK9_ROLE_SWITCH_INSTRUCTION) {
+    return 'The cursor-only and target-only participant views are shown side by side, with arrows indicating that roles switch each Shared trial.';
   }
   if (instruction === TASK9_SHARED_RATING_INSTRUCTION) {
     return 'A seven-point response scale asks participants to rate their contribution to earning points.';
   }
   if (instruction === TASK9_FINAL_BASELINE_INSTRUCTION) {
-    return 'The final baseline block returns to your own cursor for two trials.';
+    return 'The final baseline block returns to your own cursor for one trial.';
   }
   if (instruction === MOVE_CURSOR_INSTRUCTION) {
     return 'A cursor controlled with a mouse or trackpad tracks a moving target.';

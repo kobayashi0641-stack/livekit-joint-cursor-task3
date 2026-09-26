@@ -14,12 +14,12 @@ test('main admin auto-start config syncs only on the initial idle status load', 
   assert.equal(shouldSyncAgentConfigFromStatus(true, 'idle'), false);
 });
 
-test('main admin and Task9 use the point-to-point 3/5/2, 30-second defaults', () => {
+test('main admin and Task9 use the point-to-point 3/6/1, 30-second defaults', () => {
   assert.deepEqual(POINT_TO_POINT_ADMIN_DEFAULTS, {
     taskType: 'task9',
     cursorControlBaselineTrials: 3,
-    cursorControlSharedTrials: 5,
-    cursorControlWashoutTrials: 2,
+    cursorControlSharedTrials: 6,
+    cursorControlWashoutTrials: 1,
     cursorControlAdaptationTrials: 0,
     trialDurationSeconds: 30,
     instructionDurationMs: 4000,
@@ -31,7 +31,7 @@ test('main admin and Task9 use the point-to-point 3/5/2, 30-second defaults', ()
       washout: task9Sketch.defaults?.cursorControlWashoutTrials,
       seconds: task9Sketch.defaults?.trialDurationSeconds,
     },
-    { baseline: 3, shared: 5, washout: 2, seconds: 30 },
+    { baseline: 3, shared: 6, washout: 1, seconds: 30 },
   );
 });
 

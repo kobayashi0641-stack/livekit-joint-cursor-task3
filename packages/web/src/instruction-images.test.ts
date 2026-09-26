@@ -23,13 +23,15 @@ test('Task 1 final baseline explanation moves to the fifth instruction image', (
   );
 });
 
-test('Task 2 point-to-point instruction pages use the supplied five images', () => {
+test('Task 3 point-to-point instruction pages use the updated trial-count images', () => {
   const pages = [
     ['Reach as many red targets as possible within 45 seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.', '/task9-instruction1.png'],
-    ['You will first complete baseline trials using your own cursor.', '/task9-instruction2.png'],
-    ['After that, you will control a shared cursor with the other participant.', '/task9-instruction3.png'],
-    ['After each shared-cursor trial, rate your contribution to earning the points.', '/task9-instruction4.png'],
-    ['Finally, you will complete baseline trials again using your own cursor.', '/task9-instruction5.png'],
+    ['You will first complete baseline trials using your own cursor.', '/task9-instruction2-v3.png'],
+    ['After that, you will control a shared cursor with the other participant.', '/task9-instruction3-v3.png'],
+    ['After the first target, one of you will see only the shared cursor and the other will see only the red target.', '/task9-instruction4-views-only.png'],
+    ['Target-hit feedback remains visible to both. Your first roles are random and then switch in each trial.', '/task9-instruction4-roles-v4.png'],
+    ['After each shared-cursor trial, rate your contribution to earning the points.', '/task9-instruction4-v3.png'],
+    ['Finally, you will complete baseline trials again using your own cursor.', '/task9-instruction5-v3.png'],
   ] as const;
 
   for (const [instruction, imageSrc] of pages) {

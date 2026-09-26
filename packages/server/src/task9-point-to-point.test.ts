@@ -5,7 +5,7 @@ import { DEFAULT_EXPERIMENT_CONFIG } from './agent-rules.js';
 import { runTrialBody } from './experiments/task9/experiment.js';
 import { task9Task } from './experiments/task9/index.js';
 
-test('Task9 is the server default with 3/5/2 trials lasting 30 seconds', () => {
+test('Task9 is the server default with 3/6/1 trials lasting 30 seconds', () => {
   assert.deepEqual(
     {
       taskType: DEFAULT_EXPERIMENT_CONFIG.taskType,
@@ -14,7 +14,7 @@ test('Task9 is the server default with 3/5/2 trials lasting 30 seconds', () => {
       washout: DEFAULT_EXPERIMENT_CONFIG.cursorControlWashoutTrials,
       seconds: DEFAULT_EXPERIMENT_CONFIG.trialDurationSeconds,
     },
-    { taskType: 'task9', baseline: 3, shared: 5, washout: 2, seconds: 30 },
+    { taskType: 'task9', baseline: 3, shared: 6, washout: 1, seconds: 30 },
   );
 });
 
@@ -47,11 +47,13 @@ test('Task9 uses a 30-second baseline/shared/washout point-to-point sequence', (
   assert.ok(trials.every((rule) => rule.durationSeconds === 30));
 });
 
-test('Task9 instructions include the shared-trial contribution rating page', () => {
+test('Task9 instructions split asymmetric views and role switching across two pages', () => {
   assert.deepEqual(task9Task.generateInstructions(DEFAULT_EXPERIMENT_CONFIG), [
     'Reach as many red targets as possible within 30 seconds. Keep the cursor inside the target briefly to earn a point. Passing through does not count.',
     'You will first complete baseline trials using your own cursor.',
     'After that, you will control a shared cursor with the other participant.',
+    'After the first target, one of you will see only the shared cursor and the other will see only the red target.',
+    'Target-hit feedback remains visible to both. Your first roles are random and then switch in each trial.',
     'After each shared-cursor trial, rate your contribution to earning the points.',
     'Finally, you will complete baseline trials again using your own cursor.',
   ]);
